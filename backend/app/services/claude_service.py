@@ -1,10 +1,11 @@
 import json
+from typing import Optional
 
 from anthropic import AsyncAnthropic
 
 from app.core.config import settings
 
-_client: AsyncAnthropic | None = None
+_client: Optional[AsyncAnthropic] = None
 
 
 def _get_client() -> AsyncAnthropic:

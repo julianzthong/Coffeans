@@ -1,21 +1,28 @@
 import os
+import uuid
 from collections.abc import AsyncGenerator
+from typing import Optional
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 
 from app.db.base import Base
-from app.main import app
 from app.db.session import get_db
+from app.main import app
 from app.models.bean import Bean
 from app.models.roastery import Roastery
-from app.models.shop import Shop
-from app.models.tasting import TastingEntry
 from app.models.user import User
+
+
+if not hasattr(SQLiteTypeCompiler, "visit_JSONB"):
+    SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
+
+if not hasattr(SQLiteTypeCompiler, "visit_UUID"):
+    SQLiteTypeCompiler.visit_UUID = lambda self, type_, **kw: self.visit_STRING(type_, **kw)
 
 
 @pytest_asyncio.fixture()
@@ -52,7 +59,9 @@ async def client(db_session: AsyncSession):
 @pytest_asyncio.fixture()
 async def create_user(db_session: AsyncSession):
     async def _create_user(email: str = "user@example.com", password: str = "secret123", display_name: str = "Test User") -> User:
-        user = User(email=email, hashed_password=password, display_name=display_name)
+        from app.core.security import hash_password
+
+        user = User(email=email, hashed_password=hash_password(password), display_name=display_name)
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
@@ -75,8 +84,11 @@ async def create_roastery(db_session: AsyncSession):
 
 @pytest_asyncio.fixture()
 async def create_bean(db_session: AsyncSession):
-    async def _create_bean(roastery_id: str | None = None, name: str = "Test Bean") -> Bean:
-        bean = Bean(roastery_id=roastery_id or "00000000-0000-0000-0000-000000000000", name=name)
+    async def _create_bean(roastery_id: Optional[str] = None, name: str = "Test Bean") -> Bean:
+        bean = Bean(
+            roastery_id=uuid.UUID(roastery_id) if roastery_id else uuid.uuid4(),
+            name=name,
+        )
         db_session.add(bean)
         await db_session.commit()
         await db_session.refresh(bean)

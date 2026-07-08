@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -25,10 +26,10 @@ class TastingEntry(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
     bean_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("beans.id"))
-    rating: Mapped[int | None] = mapped_column(Integer)  # 1-5
-    notes_raw: Mapped[str | None] = mapped_column(Text)
+    rating: Mapped[Optional[int]] = mapped_column(Integer)  # 1-5
+    notes_raw: Mapped[Optional[str]] = mapped_column(Text)
     notes_structured: Mapped[dict] = mapped_column(JSONB, default=dict)
-    brew_method: Mapped[BrewMethod | None] = mapped_column(Enum(BrewMethod))
+    brew_method: Mapped[Optional[BrewMethod]] = mapped_column(Enum(BrewMethod))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="tasting_entries")

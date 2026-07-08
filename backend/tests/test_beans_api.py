@@ -2,15 +2,18 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
-async def test_list_beans_returns_only_active_items(client: AsyncClient, create_roastery, create_bean):
+async def test_list_beans_returns_only_active_items(client: AsyncClient, create_roastery, create_bean, db_session: AsyncSession):
     roastery = await create_roastery(name="Bean Roastery")
     await create_bean(roastery_id=str(roastery.id), name="Active Bean")
 
     inactive = await create_bean(roastery_id=str(roastery.id), name="Inactive Bean")
     inactive.is_active = False
+    db_session.add(inactive)
+    await db_session.commit()
 
     response = await client.get("/api/beans")
 
